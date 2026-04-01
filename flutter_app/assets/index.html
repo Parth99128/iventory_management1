@@ -324,11 +324,18 @@ input,select,textarea{font-family:'JetBrains Mono',monospace}
     <div class="mc am"><div class="ml">Low Stock</div><div class="mv" id="i-low">0</div><div class="ms wn">Below minimum</div></div>
     <div class="mc rd"><div class="ml">Critical</div><div class="mv" id="i-crit" style="color:var(--rd)">0</div><div class="ms dn">Order now</div></div>
   </div>
-  <div class="scan" onclick="toast('📷 Open in Chrome mobile for live QR camera scanning')">
-    <div style="font-size:36px;margin-bottom:6px">⬛</div>
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px">Scan QR / Barcode</div>
-    <div style="font-size:10px;color:var(--light);margin-top:3px">Tap to log material usage instantly</div>
+  <div class="scan" onclick="if(window.AIChannel) { window.AIChannel.postMessage('START_OCR'); } else { toast('📷 Web: Simulating AI Smart OCR Receipt & Delivery Challan Scanner...'); }">
+    <div style="font-size:36px;margin-bottom:6px">📸</div>
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px">Smart OCR Receipt Scan</div>
+    <div style="font-size:10px;color:var(--light);margin-top:3px">Take photo of supplier bill to auto-log materials</div>
   </div>
+  
+  <div style="margin: 0 14px 10px; text-align: center;">
+    <button class="btn btn-p" style="background:var(--bl); border-color:var(--bl);" onclick="if(window.AIChannel) { window.AIChannel.postMessage('PREDICT_SHORTAGES'); } else { toast('🔮 Simulating AI Prediction...'); }">
+      🔮 Run AI Shortage Prediction
+    </button>
+  </div>
+
   <div style="padding:0 14px 10px;display:flex;gap:8px">
     <input class="fi" id="iSearch" placeholder="Search materials…" oninput="renderInv()" style="flex:1"/>
     <select class="fsel" id="iFilter" onchange="renderInv()" style="width:82px">

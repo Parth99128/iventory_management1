@@ -59,6 +59,17 @@ class _WebAppScreenState extends State<WebAppScreen> {
     final WebViewController controller =
         WebViewController.fromPlatformCreationParams(params);
 
+    controller.addJavaScriptChannel(
+      'AIChannel',
+      onMessageReceived: (JavaScriptMessage message) async {
+        if (message.message == 'START_OCR') {
+          _simulateOCRScan();
+        } else if (message.message == 'PREDICT_SHORTAGES') {
+          _simulateAIShortages();
+        }
+      },
+    );
+
     if (kIsWeb) {
       // The web platform does not support setJavaScriptMode or loadFlutterAsset
       // Instead, we load the raw HTML string directly from assets.
@@ -74,6 +85,60 @@ class _WebAppScreenState extends State<WebAppScreen> {
     }
 
     _controller = controller;
+  }
+
+  Future<void> _simulateOCRScan() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('📸 Vision AI Scanner'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Scanning receipt... Extracting items, quantities, and PO numbers.'),
+          ],
+        ),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) Navigator.of(context).pop();
+
+    _controller.runJavaScript('''
+      toast('✅ AI OCR: 500x Cement, 100x Steel Planks logged.');
+      if (document.getElementById('i-tot')) {
+        document.getElementById('i-tot').innerText = "15+"; // fake updated count
+      }
+    ''');
+  }
+
+  Future<void> _simulateAIShortages() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🔮 AI Shortage Prediction'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Analyzing daily burn rate vs supplier delivery lead times...'),
+          ],
+        ),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) Navigator.of(context).pop();
+
+    _controller.runJavaScript('''
+      toast('⚠ Warning injected into dashboard');
+      alert('⚠️ AI PREDICTIVE ALERT\\n\\nBased on this week\\'s burn rate, you will run out of "Concrete Premium" in exactly 2 Days.\\n\\nSupplier [FastCement Co] standard lead time is 3 Days.\\n\\nRecommendation: Order immediately to prevent $50,000 site downtime.');
+    ''');
   }
 
   @override
