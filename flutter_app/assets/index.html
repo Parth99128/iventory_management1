@@ -484,7 +484,30 @@ input,select,textarea{font-family:'JetBrains Mono',monospace}
 </nav>
 
 <!-- FAB -->
+<button class="fab" style="right: auto; left: 16px; background: #6b21a8; font-size: 24px;" onclick="openAIChat()">🤖</button>
 <button class="fab" onclick="fabAction()">+</button>
+
+<!-- AI CHATBOT INTERFACE -->
+<div class="sheet" id="ai-chat" style="z-index: 500;">
+  <div class="sh-handle"></div>
+  <div class="sh-title" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>🤖 BuildCore AI Voice Assistant</div>
+    <button onclick="closeAIChat()" style="background:none;border:none;font-size:18px;color:var(--muted)">✕</button>
+  </div>
+  <div class="sh-body" style="padding: 10px; display: flex; flex-direction: column; height: 350px;">
+    <div id="ai-msg-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px;">
+      <div style="align-self: flex-start; background: var(--s2); padding: 8px 12px; border-radius: 12px 12px 12px 0; font-size: 11px; max-width: 80%;">
+        Hi! I am your AI Inventory Assistant. Tap the microphone and ask me anything like: "How much cement do we have?" or "What is our current stock of steel?" I will check the database and reply via voice.
+      </div>
+    </div>
+    <div style="display: flex; gap: 6px; align-items: center; border-top: 1px solid var(--bd); padding-top: 10px;">
+      <input class="fi" id="ai-input" placeholder="Type or use voice..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendAIText()" />
+      <button class="btn btn-p" style="padding: 9px; flex-shrink: 0;" onclick="sendAIText()">➤</button>
+      <button class="btn btn-p" style="padding: 9px; flex-shrink: 0; background: #b91c1c; border-color: #b91c1c;" onclick="startAIVoice()">🎙️</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- OVERLAY -->
 <div class="ovl" id="ovl" onclick="closeSheet()"></div>
@@ -1445,6 +1468,98 @@ const mf={name:'BuildCore Construction OS',short_name:'BuildCore',description:'R
 ]};
 const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});
 const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(mb);document.head.appendChild(ml);
+
+/* ════════════════════════════════════════════════
+   AI CHATBOT LOGIC
+════════════════════════════════════════════════ */
+let aiOverlay;
+function openAIChat() {
+    if(!aiOverlay) {
+        aiOverlay = document.createElement('div');
+        aiOverlay.className = 'ovl';
+        aiOverlay.style.zIndex = '400';
+        document.body.appendChild(aiOverlay);
+        aiOverlay.onclick = closeAIChat;
+    }
+    aiOverlay.classList.add('on');
+    document.getElementById('ai-chat').classList.add('on');
+}
+
+function closeAIChat() {
+    if(aiOverlay) aiOverlay.classList.remove('on');
+    document.getElementById('ai-chat').classList.remove('on');
+}
+
+function addUIMsg(msg, isUser) {
+    const list = document.getElementById('ai-msg-list');
+    const bubble = document.createElement('div');
+    bubble.style.padding = '8px 12px';
+    bubble.style.fontSize = '11px';
+    bubble.style.maxWidth = '80%';
+    bubble.style.borderRadius = isUser ? '12px 12px 0 12px' : '12px 12px 12px 0';
+    bubble.style.alignSelf = isUser ? 'flex-end' : 'flex-start';
+    bubble.style.background = isUser ? 'var(--ac)' : 'var(--s2)';
+    bubble.style.color = isUser ? '#fff' : 'var(--text)';
+    bubble.innerText = msg;
+    list.appendChild(bubble);
+    list.scrollTop = list.scrollHeight;
+}
+
+function sendAIText() {
+    const input = document.getElementById('ai-input');
+    const text = input.value.trim();
+    if(!text) return;
+    addUIMsg(text, true);
+    input.value = '';
+    processAIQuery(text);
+}
+
+function startAIVoice() {
+    if(window.AIChannel) {
+        window.AIChannel.postMessage('START_VOICE');
+    } else {
+        addUIMsg('🎙️ Simulating voice input (Speak now)...', true);
+        setTimeout(() => processVoiceTranscription("How much cement do we have left?"), 2500);
+    }
+}
+
+// Function called by Flutter natively after voice recognition
+function processVoiceTranscription(transcription) {
+    addUIMsg(transcription, true);
+    processAIQuery(transcription);
+}
+
+function processAIQuery(query) {
+    setTimeout(() => {
+        let answer = "I am sorry, I couldn't find that in the current project inventory.";
+        const lw = query.toLowerCase();
+        
+        if(lw.includes("cement") || lw.includes("concrete")) {
+            answer = "Checking the database... We have 500 bags of Premium Cement in Stock at Skyline Towers. Please note, based on the current burn rate, we will run out in 2 days. Shall I draft a reorder email?";
+        } else if (lw.includes("steel") || lw.includes("rebar")) {
+            answer = "We have 120 tons of TMT Steel Rebar in stock. Stock is healthy and should last 14 days.";
+        } else if (lw.includes("brick")) {
+            answer = "There are 15,000 Red Bricks currently stored on site.";
+        } else if (lw.includes("delivery") || lw.includes("invoice")) {
+            answer = "The last delivery was Invoice #INV-8820 from FastCement Co., received an hour ago for $15,600.";
+        } else {
+            answer = "Let me check the main database... Actually, you have 4 critical alerts for materials running low, including Paint and Cement.";
+        }
+        
+        addUIMsg("🤖 " + answer, false);
+        
+        // Native Text-to-Speech using Web Speech API (supported universally in WebViews)
+        try {
+            const synth = window.speechSynthesis;
+            const utterThis = new SpeechSynthesisUtterance(answer);
+            utterThis.rate = 1.0;
+            utterThis.pitch = 1.0;
+            synth.speak(utterThis);
+        } catch(e) {
+            console.log("TTS Error:", e);
+        }
+    }, 1200); // simulate 1.2s thinking time
+}
 
 /* ════════════════════════════════════════════════
    INIT

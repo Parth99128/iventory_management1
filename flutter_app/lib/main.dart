@@ -66,6 +66,8 @@ class _WebAppScreenState extends State<WebAppScreen> {
           _simulateOCRScan();
         } else if (message.message == 'PREDICT_SHORTAGES') {
           _simulateAIShortages();
+        } else if (message.message == 'START_VOICE') {
+          _simulateNativeVoiceSTT();
         }
       },
     );
@@ -139,6 +141,31 @@ class _WebAppScreenState extends State<WebAppScreen> {
       toast('⚠ Warning injected into dashboard');
       alert('⚠️ AI PREDICTIVE ALERT\\n\\nBased on this week\\'s burn rate, you will run out of "Concrete Premium" in exactly 2 Days.\\n\\nSupplier [FastCement Co] standard lead time is 3 Days.\\n\\nRecommendation: Order immediately to prevent $50,000 site downtime.');
     ''');
+  }
+
+  Future<void> _simulateNativeVoiceSTT() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🎙️ Listening...'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.mic, size: 48, color: Colors.blue),
+            SizedBox(height: 16),
+            Text('Please speak your inventory query...', textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+
+    // Wait exactly 3 seconds to simulate listening/transcribing
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) Navigator.of(context).pop();
+
+    // Inject the "transcription" into the Web UI so the Voice AI logic runs
+    _controller.runJavaScript('processVoiceTranscription("How much cement do we have right now?");');
   }
 
   @override
