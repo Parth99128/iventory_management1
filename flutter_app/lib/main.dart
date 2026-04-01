@@ -139,7 +139,7 @@ class _WebAppScreenState extends State<WebAppScreen> {
 
     _controller.runJavaScript('''
       toast('⚠ Warning injected into dashboard');
-      alert('⚠️ AI PREDICTIVE ALERT\\n\\nBased on this week\\'s burn rate, you will run out of "Concrete Premium" in exactly 2 Days.\\n\\nSupplier [FastCement Co] standard lead time is 3 Days.\\n\\nRecommendation: Order immediately to prevent $50,000 site downtime.');
+      alert('⚠️ AI PREDICTIVE ALERT\\n\\nBased on this week\\'s burn rate, you will run out of "Concrete Premium" in exactly 2 Days.\\n\\nSupplier [FastCement Co] standard lead time is 3 Days.\\n\\nRecommendation: Order immediately to prevent \$50,000 site downtime.');
     ''');
   }
 
