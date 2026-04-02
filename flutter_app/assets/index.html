@@ -1519,7 +1519,7 @@ function startAIVoice() {
         window.AIChannel.postMessage('START_VOICE');
     } else {
         addUIMsg('🎙️ Simulating voice input (Speak now)...', true);
-        setTimeout(() => processVoiceTranscription("How much cement do we have left?"), 2500);
+        setTimeout(() => processVoiceTranscription("Are there any critical stock alerts?"), 2500);
     }
 }
 
@@ -1534,16 +1534,42 @@ function processAIQuery(query) {
         let answer = "I am sorry, I couldn't find that in the current project inventory.";
         const lw = query.toLowerCase();
         
-        if(lw.includes("cement") || lw.includes("concrete")) {
-            answer = "Checking the database... We have 500 bags of Premium Cement in Stock at Skyline Towers. Please note, based on the current burn rate, we will run out in 2 days. Shall I draft a reorder email?";
-        } else if (lw.includes("steel") || lw.includes("rebar")) {
-            answer = "We have 120 tons of TMT Steel Rebar in stock. Stock is healthy and should last 14 days.";
-        } else if (lw.includes("brick")) {
-            answer = "There are 15,000 Red Bricks currently stored on site.";
-        } else if (lw.includes("delivery") || lw.includes("invoice")) {
-            answer = "The last delivery was Invoice #INV-8820 from FastCement Co., received an hour ago for $15,600.";
+        let found = false;
+        // Simple NLP routing
+        if(lw.includes("delivery") || lw.includes("invoice")) {
+            if (DB.invoices && DB.invoices.length > 0) {
+               const latest = DB.invoices[DB.invoices.length - 1];
+               answer = `The last invoice was ${latest.id} from ${latest.supplier}, received on ${latest.date} for ₹${latest.total}.`;
+            } else {
+               answer = "There are no invoices recorded in the system yet.";
+            }
+        } else if (lw.includes("alert") || lw.includes("critical")) {
+             const criticalVars = DB.inventory.filter(m => computeStatus(m) === 'critical');
+             if (criticalVars.length > 0) {
+                 answer = `You have ${criticalVars.length} critical inventory alerts. Materials running low include: ${criticalVars.map(c => c.name).join(', ')}.`;
+             } else {
+                 answer = "You have no critical stock alerts right now.";
+             }
         } else {
-            answer = "Let me check the main database... Actually, you have 4 critical alerts for materials running low, including Paint and Cement.";
+            // Search inventory for matching material
+            for (let i = 0; i < DB.inventory.length; i++) {
+                const mat = DB.inventory[i];
+                if (lw.includes(mat.name.toLowerCase().split(' ')[0]) || lw.includes(mat.cat.toLowerCase())) {
+                    answer = `We have ${mat.stock} ${mat.unit} of ${mat.name} in stock. Minimum level is set to ${mat.min}.`;
+                    if (mat.stock < mat.min) {
+                        answer += " This is currently below the required minimum.";
+                    } else {
+                        answer += " Stock is healthy.";
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            if(!found && lw.includes("cement")) {
+                answer = "I couldn't find cement in your active inventory. Please ensure it's added.";
+            } else if (!found && lw.includes("steel")) {
+                answer = "I couldn't find steel in your active inventory. Please ensure it's added.";
+            }
         }
         
         addUIMsg("🤖 " + answer, false);
