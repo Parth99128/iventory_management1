@@ -324,14 +324,14 @@ input,select,textarea{font-family:'JetBrains Mono',monospace}
     <div class="mc am"><div class="ml">Low Stock</div><div class="mv" id="i-low">0</div><div class="ms wn">Below minimum</div></div>
     <div class="mc rd"><div class="ml">Critical</div><div class="mv" id="i-crit" style="color:var(--rd)">0</div><div class="ms dn">Order now</div></div>
   </div>
-  <div class="scan" onclick="if(window.AIChannel) { window.AIChannel.postMessage('START_OCR'); } else { toast('📷 Web: Simulating AI Smart OCR Receipt & Delivery Challan Scanner...'); }">
+  <div class="scan" onclick="if(window.AIChannel) { window.AIChannel.postMessage('START_OCR'); } else { openSheet('addItem'); }">
     <div style="font-size:36px;margin-bottom:6px">📸</div>
     <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px">Smart OCR Receipt Scan</div>
     <div style="font-size:10px;color:var(--light);margin-top:3px">Take photo of supplier bill to auto-log materials</div>
   </div>
   
   <div style="margin: 0 14px 10px; text-align: center;">
-    <button class="btn btn-p" style="background:var(--bl); border-color:var(--bl);" onclick="if(window.AIChannel) { window.AIChannel.postMessage('PREDICT_SHORTAGES'); } else { toast('🔮 Simulating AI Prediction...'); }">
+    <button class="btn btn-p" style="background:var(--bl); border-color:var(--bl);" onclick="if(window.AIChannel) { window.AIChannel.postMessage('PREDICT_SHORTAGES'); } else { alert('AI Analysis currently requires native app.'); }">
       🔮 Run AI Shortage Prediction
     </button>
   </div>
@@ -1518,8 +1518,10 @@ function startAIVoice() {
     if(window.AIChannel) {
         window.AIChannel.postMessage('START_VOICE');
     } else {
-        addUIMsg('🎙️ Simulating voice input (Speak now)...', true);
-        setTimeout(() => processVoiceTranscription("Are there any critical stock alerts?"), 2500);
+        const query = prompt('Enter your inventory query:', 'Are there any critical stock alerts?');
+        if (query) {
+            processVoiceTranscription(query);
+        }
     }
 }
 
