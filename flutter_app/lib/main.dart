@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-// Import for iOS features.
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const InventoryApp());
@@ -17,7 +18,7 @@ class InventoryApp extends StatelessWidget {
     return MaterialApp(
       title: 'BuildCore Construction OS',
       theme: ThemeData(
-        primaryColor: const Color(0xFFC8541A), // Matches --ac from HTML
+        primaryColor: const Color(0xFFC8541A),
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFC8541A)),
         useMaterial3: true,
       ),
@@ -36,12 +37,14 @@ class WebAppScreen extends StatefulWidget {
 
 class _WebAppScreenState extends State<WebAppScreen> {
   late final WebViewController _controller;
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  String _voiceText = "";
 
   @override
   void initState() {
     super.initState();
     
-    // Configure WebViewController
     late final PlatformWebViewControllerCreationParams params;
     if (kIsWeb) {
       params = const PlatformWebViewControllerCreationParams();
@@ -71,13 +74,10 @@ class _WebAppScreenState extends State<WebAppScreen> {
     );
 
     if (kIsWeb) {
-      // The web platform does not support setJavaScriptMode or loadFlutterAsset
-      // Instead, we load the raw HTML string directly from assets.
       rootBundle.loadString('assets/index.html').then((html) {
         controller.loadHtmlString(html);
       });
     } else {
-      // Configuration for real Android/iOS mobile devices
       controller
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(const Color(0xFFFFFFFF))
@@ -88,12 +88,19 @@ class _WebAppScreenState extends State<WebAppScreen> {
   }
 
   Future<void> _realOCRScan() async {
-    // Instead of injecting dummy OCR data, redirect the user to the manual entry form
-    _controller.runJavaScript("openSheet('addItem');");
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('OCR requires Native camera setup. Please enter details manually for live data.')),
-    );
+    // Request camera permission
+    var status = await Permission.camera.request();
+    if (!mounted) return;
+    if (status.isGranted) {
+      _controller.runJavaScript("openSheet('addItem');");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Camera permission granted! Ready to scan (Please enter details manually for now).')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Camera permission denied.')),
+      );
+    }
   }
 
   Future<void> _realAIShortages() async {
@@ -116,42 +123,113 @@ class _WebAppScreenState extends State<WebAppScreen> {
   }
 
   Future<void> _realVoiceSTT() async {
-    final TextEditingController textController = TextEditingController();
-    final String? query = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('🎙️ Voice Assistant (Text Input)'),
-        content: TextField(
-          controller: textController,
-          decoration: const InputDecoration(
-            hintText: 'Type your inventory query...',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(textController.text),
-            child: const Text('Submit Search'),
-          ),
-        ],
-      ),
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done') {
+        }
+      },
+      onError: (errorNotification) {
+         if (!mounted) return;
+         ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Speech error: $errorNotification')),
+         );
+      },
     );
 
-    if (query != null && query.isNotEmpty) {
-      // Pass the user's live query to the JS engine
-      _controller.runJavaScript('processVoiceTranscription("${query.replaceAll('"', '\\"')}");');
+    if (!mounted) return;
+    if (available) {
+      _showVoiceDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Speech recognition not available or permission denied.')),
+      );
     }
+  }
+
+  void _showVoiceDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('🎙️ Voice Assistant'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_isListening ? 'Listening...' : 'Tap Mic to speak, then Submit'),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () {
+                      if (!_isListening) {
+                        _speech.listen(
+                          onResult: (result) {
+                            setState(() {
+                              _voiceText = result.recognizedWords;
+                            });
+                          },
+                        );
+                        setState(() {
+                          _isListening = true;
+                        });
+                      } else {
+                        _speech.stop();
+                        setState(() {
+                          _isListening = false;
+                        });
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: 30,
+                      backgroundColor: _isListening ? Colors.red : Colors.blue,
+                      child: Icon(
+                        _isListening ? Icons.stop : Icons.mic,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(_voiceText.isEmpty ? "No speech detected" : _voiceText, textAlign: TextAlign.center),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _speech.stop();
+                    _voiceText = "";
+                    _isListening = false;
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _speech.stop();
+                    final query = _voiceText;
+                    _voiceText = "";
+                    _isListening = false;
+                    Navigator.of(context).pop();
+
+                    if (query.isNotEmpty) {
+                      _controller.runJavaScript('processVoiceTranscription("\${query.replaceAll('"', '\\"')}");');
+                    }
+                  },
+                  child: const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // SafeArea ensures we don't overlap with the system UI
       body: SafeArea(
         child: WebViewWidget(controller: _controller),
       ),

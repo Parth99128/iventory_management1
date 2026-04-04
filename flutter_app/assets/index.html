@@ -372,7 +372,7 @@ input,select,textarea{font-family:'JetBrains Mono',monospace}
       <button class="tab" onclick="filterInv('paid',this)">Paid</button>
       <button class="tab" onclick="filterInv('overdue',this)">Overdue</button>
     </div>
-    <div class="card" style="margin-top:0;border-radius:0 0 6px 6px" id="invList"></div>
+    <div class="card" style="margin-top:0;border-radius:0 0 6px 6px" id="invoiceList"></div>
   </div>
 </div>
 
@@ -950,7 +950,7 @@ function filterInv(f,btn){
 }
 function renderInvoices(){
   const items=invFilter==='all'?DB.invoices:DB.invoices.filter(i=>i.status===invFilter);
-  const el=document.getElementById('invList');if(!el)return;
+  const el=document.getElementById('invoiceList');if(!el)return;
   if(DB.invoices.length===0){
     el.innerHTML=`<div class="empty"><div class="empty-icon">📄</div><div class="empty-title">No Invoices Yet</div><div class="empty-msg">Create your first invoice to track supplier payments and procurement costs.</div><button class="empty-btn" onclick="openSheet('addInv')">+ Create Invoice</button></div>`;
   } else if(items.length===0){
